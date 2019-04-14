@@ -1,1 +1,3 @@
-# Nature-Inspired-Computing-Algorithms
+# Nature Inspired Computing Algorithms
+
+Algorithms developed for behavior studies. 
