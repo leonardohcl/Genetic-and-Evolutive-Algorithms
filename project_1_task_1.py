@@ -2,23 +2,28 @@
 
 from BinaryString import BinaryString
 from InputMethods import readIntMin, readFloatInterval, readIntInterval, readOption
-from GeneticAlgorithm import geneticAlgorithm, rouletteWheelSelection, Crossover, Mutation
+from GeneticAlgorithm import geneticAlgorithm, Crossover, Mutation, crossover2by2
+import matplotlib.pyplot as plt
 
 zero = BinaryString([1,1,1,1,0,1,1,0,1,1,1,1])
 
-def fitnessCalc(binStr):
+def fitnessCalculation(binStr):
 	return len(zero.bin) - BinaryString.hammingDistance(zero, binStr)
 
-def bestFitness(fitnessList):
+def getBestFitness(fitnessList):
 	best = 12 - fitnessList[0]
 	bestI = 0
 	for i in range(len(fitnessList)):
-		comp = 12 - fitnessList[i]
-		if(comp > best):
-			best = comp
+		if(fitnessList[i] > best):
+			best = fitnessList[i]
 			bestI = i
 	return [best, bestI]
 
+
+def targetFitnessAchieved(bestFitness, population):
+	if bestFitness == 12:
+		return True
+	return False
 
 print("\nReconhecimento de padroes com algoritmo genetico")
 print("------------------------------------------------")
@@ -26,7 +31,7 @@ print("Aproximar ao maximo a figura 0, representado por [1 1 1 1 0 1 1 0 1 1 1 1
 
 popSize = 1
 while popSize % 2 == 1:
-	popSize = readIntMin('Tamanho da populacao: ', 0)
+	popSize = readIntMin('Tamanho da populacao: ', 1)
 	if popSize % 2 == 1:
 		print('Populacao deve ser de tamanho par para facilitar crossover!')
 
@@ -51,11 +56,37 @@ if shouldMutate:
 else:
 	mutationProp = 0
 		
-crossover = Crossover(shouldCrossover,crossoverProbability,crossoverRangeStart,crossoverRangeEnd,rouletteWheelSelection)
+maxIt = readIntMin('Numero maximos de iteracoes do algoritmo: ',1)
+
+crossover = Crossover(shouldCrossover,crossoverProbability,crossoverRangeStart,crossoverRangeEnd, crossover2by2)
 mutation = Mutation(shouldMutate, mutationProp)
 
 population = []
 for i in range(popSize):
 	population.append(BinaryString.rand(zero.size))
 
-geneticAlgorithm(population,150,crossover,mutation,12,fitnessCalc,bestFitness)
+print('\nExecutando...')
+
+[population, fitnessList, numGenerations, avgFitness, bestFitness, bestFitnessIndex] = geneticAlgorithm(population,maxIt,crossover,mutation,targetFitnessAchieved,fitnessCalculation,getBestFitness)
+
+print('Finalizado!\n')
+print('Geracoes executadas: '+str(numGenerations))
+
+printResults = readOption('\nDeseja ver a ultima geracao do algoritmo? (s/n)\n','s','n')
+
+if printResults:
+	print('\nPopulacao final: ')
+	for i in range(len(population)):
+		print('['+population[i].toString() + '] - Fitness: '+ str(fitnessList[i]))
+	print('Melhor gene:\n[' + population[bestFitnessIndex].toString() +'] - Fitness:'+ str(fitnessList[bestFitnessIndex]))
+
+plotGraphs = readOption('\nDeseja ver o grafico com a media de desempenho e o melhor desempenho de cada geracao? (s/n)\n','s','n')
+
+if plotGraphs:
+	x = range(len(avgFitness))
+	plt.plot(x,avgFitness, label="Fitness media")
+	plt.plot(x,bestFitness, label="Melhor Fitness")
+	plt.legend()
+	plt.show()
+
+print('\nFinalizando script...')
