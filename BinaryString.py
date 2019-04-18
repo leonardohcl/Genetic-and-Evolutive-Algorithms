@@ -21,6 +21,7 @@ class BinaryString:
 			value = value * -1
 		return value
 
+	
 	@staticmethod
 	def hammingDistance(binStr1, binStr2):
 		if binStr1.size != binStr2.size:
@@ -51,6 +52,12 @@ class BinaryString:
 				else:
 					self.bin[i] = 0
 		self.decimal = BinaryString.toInt(self)
+
+	def toString(self):
+		string = ''
+		for i in range(self.size):
+			string += str(self.bin[i])
+		return string
 
 	# Constructor
 	def __init__(self, binStr):
