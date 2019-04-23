@@ -4,7 +4,7 @@ from random import random
 class BinaryString:
 
 	@staticmethod
-	def rand(size):
+	def newRandom(size):
 		randList = []
 		for i in range(size):
 			randList.append(randint(0, 1))
@@ -51,7 +51,6 @@ class BinaryString:
 					self.bin[i] = 1
 				else:
 					self.bin[i] = 0
-		self.decimal = BinaryString.toInt(self)
 
 	def toString(self):
 		string = ''
@@ -69,6 +68,5 @@ class BinaryString:
 					raise Exception('Binary String list values must be only 0 or 1')
 			self.bin = list(binStr)
 			self.size = len(self.bin)
-			self.decimal = BinaryString.toInt(self)
 		else:
 			raise Exception('Binary String value must be of type list')

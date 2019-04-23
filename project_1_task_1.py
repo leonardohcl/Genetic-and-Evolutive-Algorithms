@@ -2,29 +2,101 @@
 
 from BinaryString import BinaryString
 from InputMethods import readIntMin, readFloatInterval, readIntInterval, readOption
-from GeneticAlgorithm import geneticAlgorithm, Crossover, Mutation, crossover2by2
+from NatureInspiredAlgorithms import geneticAlgorithm
 import matplotlib.pyplot as plt
+from random import random, randint
+from copy import deepcopy
 
+#DEFINIÇÃO DE CONSTANTES E VARIÁVEIS GLOBAIS
 zero = BinaryString([1,1,1,1,0,1,1,0,1,1,1,1])
+shouldCrossover = False
+crossoverProbability = 0
+crossoverRangeStart = 0
+crossoverRangeEnd = zero.size - 1
+shouldMutate = False
+mutationProbability = 0
 
-def fitnessCalculation(binStr):
-	return len(zero.bin) - BinaryString.hammingDistance(zero, binStr)
+#DEFINIÇÃO DE FUNÇÕES
 
-def getBestFitness(fitnessList):
-	best = 12 - fitnessList[0]
-	bestI = 0
+#Calculo da aptidão da população
+def fitnessCalculation(population):
+	fitnessList = []
+	bestFitness = 0
+	bestIndex = -1
+	for i in range(len(population)):
+		fitnessList.append(zero.size - BinaryString.hammingDistance(zero,population[i]))
+		if fitnessList[i] >= bestFitness:
+			bestFitness = fitnessList[i]
+			bestIndex = i
+
+	return [fitnessList, bestIndex]
+
+#Seleção por roleta
+def rouletteWheelSelection(population, fitnessList):
+	if(len(population) != len(fitnessList)):
+		raise Exception("Population and fitness list must be the same length")
+
+	wheelSections = []
+	selectedGenes = []
+	newPopulation = []
+	totalFitness = sum(fitnessList)
+
 	for i in range(len(fitnessList)):
-		if(fitnessList[i] > best):
-			best = fitnessList[i]
-			bestI = i
-	return [best, bestI]
+		#Definição das seções da roda 
+		wheelSections.append(360*fitnessList[i] / float(totalFitness))
+		#Sorteio do individuo para nova população
+		selectedGenes.append(random() * 360)
+		#Ajuste dos valores para obter valores entre 0 e 360
+		if i > 0:
+			wheelSections[i] = wheelSections[i-1] + wheelSections[i]
+	
+	#Substituicao dos individuos pelos sorteados
+	for i in range(len(selectedGenes)):
+		j = 0
+		while j < len(wheelSections) and wheelSections[j] <= selectedGenes[i]:
+			j+=1
+		newPopulation.append(deepcopy(population[j]))
 
+	return newPopulation
 
-def targetFitnessAchieved(bestFitness, population):
-	if bestFitness == 12:
+#Crossover dois a dois
+def crossover2by2(population, fitnessList):
+	#Retorna a população sem alteração caso não deva fazer o crossover
+	if not shouldCrossover:
+		return population
+
+	newPopulation = population
+	#Para cada 2 individuos da população faça
+	for i in range(0, len(population), 2):
+		#Verifica se deve aplicar crossover para o par
+		should = random() <= crossoverProbability
+		if should:
+			#Se sim, gera um ponto e cruza os indivíduos
+			point = randint(crossoverRangeStart, crossoverRangeEnd)
+			[newPopulation[i], newPopulation[i+1]] = BinaryString.crossover(population[i],population[i+1],point)
+
+	return newPopulation
+
+#Mutação simple um a um
+def mutate(population):
+	#Retorna a população sem alteração caso não deva ocorrer mutação
+	if not shouldMutate:
+		return population
+
+	#Para cada individuo da população faça
+	for i in range(len(population)):
+		#Aplica a função de mutação com a probabilidade dada
+		population[i].mutate(mutationProbability)
+	
+	return population
+
+#Verificação de objetivo atingido
+def equalsZero(fitnessList, bestIndex):
+	if (fitnessList[bestIndex] == 12):
 		return True
 	return False
 
+#INICIO DO ALGORITMO
 print("\nReconhecimento de padroes com algoritmo genetico")
 print("------------------------------------------------")
 print("Aproximar ao maximo a figura 0, representado por [1 1 1 1 0 1 1 0 1 1 1 1].")
@@ -33,7 +105,7 @@ popSize = 1
 while popSize % 2 == 1:
 	popSize = readIntMin('Tamanho da populacao: ', 1)
 	if popSize % 2 == 1:
-		print('Populacao deve ser de tamanho par para facilitar crossover!')
+		print('Populacao deve ser de tamanho par para aplicar o crossover 2 por 2!')
 
 
 shouldCrossover = readOption('Deseja que ocorra crossover dos individuos? (s/n)\n','s','n')
@@ -52,25 +124,23 @@ else:
 shouldMutate = readOption('Deseja que ocorram mutacoes nos individuos? (s/n)\n','s','n')
 
 if shouldMutate:
-	mutationProp = readFloatInterval("Probabilidade de mutacao dos individuos: ", 0, 1)
+	mutationProbability = readFloatInterval("Probabilidade de mutacao dos individuos: ", 0, 1)
 else:
-	mutationProp = 0
+	mutationProbability = 0
 		
 maxIt = readIntMin('Numero maximos de iteracoes do algoritmo: ',1)
 
-crossover = Crossover(shouldCrossover,crossoverProbability,crossoverRangeStart,crossoverRangeEnd, crossover2by2)
-mutation = Mutation(shouldMutate, mutationProp)
 
 population = []
 for i in range(popSize):
-	population.append(BinaryString.rand(zero.size))
+	population.append(BinaryString.newRandom(zero.size))
 
 print('\nExecutando...')
 
-[population, fitnessList, numGenerations, avgFitness, bestFitness, bestFitnessIndex] = geneticAlgorithm(population,maxIt,crossover,mutation,targetFitnessAchieved,fitnessCalculation,getBestFitness)
+[population, fitnessList, bestGeneIndex, generationCount, avgFitness, bestFitness] = geneticAlgorithm(population, maxIt, rouletteWheelSelection, crossover2by2, mutate, fitnessCalculation, equalsZero)
 
 print('Finalizado!\n')
-print('Geracoes executadas: '+str(numGenerations))
+print('Geracoes executadas: '+str(generationCount))
 
 printResults = readOption('\nDeseja ver a ultima geracao do algoritmo? (s/n)\n','s','n')
 
@@ -78,14 +148,14 @@ if printResults:
 	print('\nPopulacao final: ')
 	for i in range(len(population)):
 		print('['+population[i].toString() + '] - Fitness: '+ str(fitnessList[i]))
-	print('Melhor gene:\n[' + population[bestFitnessIndex].toString() +'] - Fitness:'+ str(fitnessList[bestFitnessIndex]))
+	print('Melhor gene:\n[' + population[bestGeneIndex].toString() +'] - Fitness:'+ str(fitnessList[bestGeneIndex]))
 
-plotGraphs = readOption('\nDeseja ver o grafico com a media de desempenho e o melhor desempenho de cada geracao? (s/n)\n','s','n')
+	plotGraphs = readOption('\nDeseja ver o grafico com a media de desempenho e o melhor desempenho de cada geracao? (s/n)\n','s','n')
 
 if plotGraphs:
 	x = range(len(avgFitness))
-	plt.plot(x,avgFitness, label="Fitness media")
-	plt.plot(x,bestFitness, label="Melhor Fitness")
+	plt.plot(x,avgFitness, label="Average fitness")
+	plt.plot(x,bestFitness, label="Best fitness")
 	plt.legend()
 	plt.show()
 
