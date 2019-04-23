@@ -9,17 +9,62 @@ class BinaryString:
 		for i in range(size):
 			randList.append(randint(0, 1))
 		return BinaryString(randList)
-
+	
 	@staticmethod
-	def toInt(binStr):
-		if not isinstance(binStr, BinaryString):
-			raise Exception('BinaryString.toInt parameter must be of type BinaryString')
-		value = 0		
-		for i in range(1, binStr.size):
-			value += binStr.bin[i]*(2**+(binStr.size-i-1))
-		if binStr.bin[0] == 1:
-			value = value * -1
-		return value
+	def binaryAdd(binStr1, binStr2):
+		if not isinstance(binStr1, BinaryString) or not isinstance(binStr2, BinaryString):
+			raise Exception('BinaryString.binaryAdd parameters must be both of type BinaryString')
+
+		sizeDiff = abs(binStr1.size - binStr2.size)
+		if sizeDiff > 0:
+			if binStr1.size > binStr2.size:
+				bin1 = binStr1.bin
+				bin2 = (sizeDiff * [0]) + binStr2.bin
+			else:				
+				bin1 = (sizeDiff * [0]) + binStr1.bin
+				bin2 = binStr2.bin
+		else:
+			bin1 = binStr1.bin
+			bin2 = binStr2.bin
+
+		carry = 0
+		result = len(bin1) * [0]			
+		for i in range(len(bin1)-1,-1,-1):
+			if bin1[i] == 1:
+				if bin2[i] == 1:
+					if carry == 1:
+						result[i] = 1
+						carry = 1
+					else:
+						result[i] = 0
+						carry = 1
+				else:
+					if carry == 1:
+						result[i] = 0
+						carry = 1
+					else:
+						result[i] = 1
+						carry = 0
+			else:
+				if bin2[i] == 1:
+					if carry == 1:
+						result[i] = 0
+						carry = 1
+					else:
+						result[i] = 1
+						carry = 0
+				else:
+					if carry == 1:
+						result[i] = 1
+						carry = 0
+					else:	
+						result[i] = 0
+						carry = 0
+		
+		if carry == 1:
+			result = [1] + result
+
+		return BinaryString(result)
 
 	
 	@staticmethod
@@ -57,6 +102,14 @@ class BinaryString:
 		for i in range(self.size):
 			string += str(self.bin[i])
 		return string
+
+	def binToInt(self):
+		value = 0		
+		for i in range(1, self.size):
+			value += self.bin[i]*(2**+(self.size-i-1))
+		if self.bin[0] == 1:
+			value = value * -1
+		return value
 
 	# Constructor
 	def __init__(self, binStr):
