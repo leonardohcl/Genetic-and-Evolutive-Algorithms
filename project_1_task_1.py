@@ -9,6 +9,7 @@ from copy import deepcopy
 
 #DEFINIÇÃO DE CONSTANTES E VARIÁVEIS GLOBAIS
 zero = BinaryString([1,1,1,1,0,1,1,0,1,1,1,1])
+withElitism = False
 shouldCrossover = False
 crossoverProbability = 0
 crossoverRangeStart = 0
@@ -22,7 +23,7 @@ mutationProbability = 0
 def fitnessCalculation(population):
 	fitnessList = []
 	bestFitness = 0
-	bestIndex = -1
+	bestIndex = 0
 	for i in range(len(population)):
 		fitnessList.append(zero.size - BinaryString.hammingDistance(zero,population[i]))
 		if fitnessList[i] >= bestFitness:
@@ -30,6 +31,18 @@ def fitnessCalculation(population):
 			bestIndex = i
 
 	return [fitnessList, bestIndex]
+
+#Função que retorna o indicie da melhor aptidão de uma lista de fitness
+def getBestFitnessIndex(fitnessList):
+	bestFitness = 0
+	bestIndex = 0
+	for i in range(len(population)):
+		fitnessList.append(zero.size - BinaryString.hammingDistance(zero,population[i]))
+		if fitnessList[i] >= bestFitness:
+			bestFitness = fitnessList[i]
+			bestIndex = i
+	return bestIndex
+
 
 #Seleção por roleta
 def rouletteWheelSelection(population, fitnessList):
@@ -57,6 +70,11 @@ def rouletteWheelSelection(population, fitnessList):
 			j+=1
 		newPopulation.append(deepcopy(population[j]))
 
+	#Caso o elitismo esteja habilitado, preserva o melhor gene na primeira posição
+	if withElitism:
+		bestIndex = getBestFitnessIndex(fitnessList)
+		newPopulation[0]  = population[bestIndex]
+
 	return newPopulation
 
 #Crossover dois a dois
@@ -83,11 +101,20 @@ def mutate(population):
 	if not shouldMutate:
 		return population
 
-	#Para cada individuo da população faça
-	for i in range(len(population)):
-		#Aplica a função de mutação com a probabilidade dada
-		population[i].mutate(mutationProbability)
-	
+	#Se o elitismo estiver habilitado não aplica a mutação para o melhor indivíduo
+	if withElitism:
+		[fitnessList, bestIndex] = fitnessCalculation(population)
+		#Para cada individuo da população faça
+		for i in range(len(population)):
+			if i != bestIndex:
+				#Aplica a função de mutação com a probabilidade dada
+				population[i].mutate(mutationProbability)
+	else:		
+		#Para cada individuo da população faça
+		for i in range(len(population)):
+			#Aplica a função de mutação com a probabilidade dada
+			population[i].mutate(mutationProbability)	
+
 	return population
 
 #Verificação de objetivo atingido
@@ -107,6 +134,7 @@ while popSize % 2 == 1:
 	if popSize % 2 == 1:
 		print('Populacao deve ser de tamanho par para aplicar o crossover 2 por 2!')
 
+withElitism = readOption('Deseja que a seleção permita o elitismo? (s/n)\n','s','n')
 
 shouldCrossover = readOption('Deseja que ocorra crossover dos individuos? (s/n)\n','s','n')
 
@@ -128,7 +156,7 @@ if shouldMutate:
 else:
 	mutationProbability = 0
 		
-maxIt = readIntMin('Numero maximos de iteracoes do algoritmo: ',1)
+maxIt = readIntMin('Numero maximo de iteracoes do algoritmo: ',1)
 
 
 population = []
