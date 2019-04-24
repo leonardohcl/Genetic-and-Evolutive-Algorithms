@@ -11,7 +11,7 @@ class BinaryString:
 		return BinaryString(randList)
 	
 	@staticmethod
-	def binaryAdd(binStr1, binStr2):
+	def binaryAdd(binStr1, binStr2, allowCarry):
 		if not isinstance(binStr1, BinaryString) or not isinstance(binStr2, BinaryString):
 			raise Exception('BinaryString.binaryAdd parameters must be both of type BinaryString')
 
@@ -61,12 +61,11 @@ class BinaryString:
 						result[i] = 0
 						carry = 0
 		
-		if carry == 1:
+		if carry == 1 and allowCarry:
 			result = [1] + result
 
 		return BinaryString(result)
 
-	
 	@staticmethod
 	def hammingDistance(binStr1, binStr2):
 		if binStr1.size != binStr2.size:
