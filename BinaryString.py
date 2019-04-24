@@ -11,6 +11,22 @@ class BinaryString:
 		return BinaryString(randList)
 	
 	@staticmethod
+	def newFromInt(n):
+		if not isinstance(n, int) :
+			raise Exception('BinaryString.newFromInt parameter must be of type int')
+		aux = [] 
+		if n < 0:
+			sign = [1]
+		else:
+			sign = [0]
+		n = abs(n)	
+		while n > 0:
+			aux = [n%2] + aux
+			n = n/2
+		aux = sign + aux
+		return BinaryString(aux)
+
+	@staticmethod
 	def binaryAdd(binStr1, binStr2, allowCarry):
 		if not isinstance(binStr1, BinaryString) or not isinstance(binStr2, BinaryString):
 			raise Exception('BinaryString.binaryAdd parameters must be both of type BinaryString')
