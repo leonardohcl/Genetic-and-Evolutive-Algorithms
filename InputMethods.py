@@ -85,7 +85,7 @@ def readIntMin(msg, bottom):
 			print('Valor invalido!')
 	return value
 
-def readOption(msg, trueValue, falseValue):
+def readOption(msg, trueValue, falseValue):	
 	while True:
 		try:
 			value = raw_input(msg)
@@ -98,3 +98,21 @@ def readOption(msg, trueValue, falseValue):
 			
 		except:
 			print('Valor invalido!')
+
+def secondsToString(s):
+	m = int(s/60)
+	s = s%60
+	h = m/60
+	m = m%60
+
+	ss = "{0:.3f}".format(s)
+	if(s < 10):
+		ss = '0'+ss
+	mm = str(m)
+	if(m < 10):
+		mm = '0'+mm
+	hh = str(h)
+	if(h < 10):
+		hh = '0'+hh
+
+	return hh+':'+mm+':'+ss

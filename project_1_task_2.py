@@ -1,7 +1,7 @@
 # encoding: utf-8
 
 from BinaryString import BinaryString
-from InputMethods import readInt, readIntMin, readIntInterval, readFloatInterval, readIntInterval, readOption, readFloat
+from InputMethods import readInt, readIntMin, readIntInterval, readFloatInterval, readIntInterval, readOption, readFloat, secondsToString
 from NatureInspiredAlgorithms import geneticAlgorithm, hillClimbing, simulatedAnnealing
 import matplotlib.pyplot as plt
 import time
@@ -168,7 +168,6 @@ def plotPointOnCurve(point):
 #Função que perturba x somando ou subtraindo em 1
 def disturbPlusOne(x):
 	xValue = x.binToInt()
-
 	plusOne = BinaryString.newFromInt(xValue + 1)
 	minusOne = BinaryString.newFromInt(xValue - 1)
 	fitnessPlusOne = getElementFitness(plusOne)
@@ -184,8 +183,6 @@ def disturbMutating(x):
 	newBinStr.mutate(0.1)
 	return newBinStr
 	
-
-
 #Funcao que decrementa a temperatura
 def lowerTemperature(t, it):
 	return t*0.8
@@ -242,42 +239,72 @@ if algorithm == 1:
 		n = readIntMin('Numero de execucoes do algoritmo: ', 1)
 		itCountList = []
 		itFitnnesList = []
+		itSolutionList = []
 		bestGeneAmongIts = BinaryString([0,0])
 		bestFitnessAmongIts = 0
+		gotToLimitIt = 0
+		nextPoint = 0
 		print('\nExecutando...')
 		start = time.time()
 		for i in range(n):	
 		 	population = []
-		 	for i in range(popSize):
+		 	for j in range(popSize):
 		 		population.append(BinaryString.newRandom(stringSize))
 
 			[population, bestGene, bestFitness, lastFitnessList, lastBestGeneIndex, generationCount, avgFitnessList, bestFitnessList] = geneticAlgorithm(population, maxIt,rouletteWheelSelection, crossover2by2, mutate, populationFitnessCalculation, geneticAlgorithmShouldStop, newFitnessIsBetter, maxItNoImprove)
 
 		 	itCountList.append(generationCount)
 			itFitnnesList.append(bestFitness)
+			itSolutionList.append(bestGene)
+
+			if generationCount >= maxIt:
+				gotToLimitIt += 1
 
 			if newFitnessIsBetter(bestFitnessAmongIts, bestFitness):
 				bestFitnessAmongIts = bestFitness
 				bestGeneAmongIts = bestGene
 
+			prct = float(i)/n
+			if(prct >= nextPoint):
+				pointTime = time.time()						
+				print('['+secondsToString(pointTime - start)+'] - '+str(100*prct)+'%')
+				nextPoint += 0.1
+
 		end = time.time()
-		elapsed = (end - start)*1000
-		print('Finalizado em '+str(elapsed)+'ms\n')					
+		elapsed = end - start
+		print('['+secondsToString(elapsed)+'] - Finalizado\n')					
 
 		bestGeneValue = getElementValueAndFitness(bestGeneAmongIts)[0]
 		print('Valor maximo atingido: g('+str(bestGeneValue)+')='+ str(bestFitnessAmongIts))
 		
 		avgItCount = float(sum(itCountList))/len(itCountList)
-		print('Media de iteracoes para cada execucao: '+str(avgItCount))
-
 		avgItFitness = sum(itFitnnesList)/len(itFitnnesList)
-		print('Media de aptidao para cada execucao: '+str(avgItFitness))
+
+		devItFitness = 0
+		devItCount = 0
+		for i in range(len(itFitnnesList)):
+			devItFitness += (itFitnnesList[i] - avgItFitness)**2
+			devItCount += (itCountList[i] - avgItCount)**2
+		
+		devItFitness = math.sqrt(devItFitness/len(itFitnnesList))
+		devItCount = math.sqrt(devItCount/len(itCountList))
+
+
+		print('\nMedia de iteracoes para cada execucao: '+str(avgItCount))
+		print('Desvio padrao de iteracoes para cada execucao: '+str(devItCount))
+		print('\nMedia de aptidao para cada execucao: '+str(avgItFitness))
+		print('Desvio padrao de aptidao para cada execucao: '+str(devItFitness))
+
+		print('\nExecucoes que pararam por atingir o maximo de iteracoes: '+str(gotToLimitIt) + ' de '+str(n))
+
 		
 		plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
 
 		if plotGraphs:
 			x = range(len(itCountList))
-			plt.plot(x,itCountList, label="Numero de execucoes")
+			mean = len(x) * [avgItCount]
+			plt.bar(x,itCountList)
+			plt.plot(x,mean,'r-',label="Mean")
 			plt.ylabel('Iterations')
 			plt.xlabel('Execution')
 			plt.legend()
@@ -287,16 +314,34 @@ if algorithm == 1:
 
 		if plotGraphs:
 			x = range(len(itFitnnesList))
-			plt.plot(x,itFitnnesList, label="Melhor aptidao da execucao")
+			mean = len(x) * [avgItFitness]
+			plt.plot(x,itFitnnesList, label="Best fitness")
+			plt.plot(x,mean,'r-', label="Mean")
 			plt.ylabel('Best Fitness')
 			plt.xlabel('Execution')
 			plt.legend()
 			plt.show()
 		
-		plotGraphs = readOption('\nDeseja ver o melhor ponto encontrado no grafico da funcao? (s/n)\n','s','n')
+		plotGraphs = readOption('\nDeseja ver os pontos maximos encontrados na curva? (s/n)\n','s','n')
 
 		if plotGraphs:
-			plotPointOnCurve(bestGeneAmongIts)
+			px = []
+			py = []
+			for i in range(len(itSolutionList)):
+				[val, gx] = getElementValueAndFitness(itSolutionList[i])
+				px.append(val) 
+				py.append(gx)
+			x = []
+			y = []
+			for i in range(100):
+				x.append(i * 0.01)
+				y.append(g(x[i])) 
+			plt.plot(x,y)
+			plt.plot(px,py,'ro',label="Max points found")
+			plt.ylabel('g(x)')
+			plt.xlabel('x')
+			plt.legend()
+			plt.show()
 	else:
 		population = []
 		for i in range(popSize):
@@ -355,6 +400,7 @@ elif algorithm == 2:
 		itSolutionList = []
 		itFitnnesList = []
 		gotToLimitIt = 0
+		nextPoint = 0
 		print('\nExecutando...')
 		start = time.time()			
 		for i in range(n):
@@ -369,26 +415,47 @@ elif algorithm == 2:
 			itSolutionList.append(bestX)
 			itFitnnesList.append(bestFitness)
 
+			prct = float(i)/n
+			if(prct >= nextPoint):
+				pointTime = time.time()						
+				print('['+secondsToString(pointTime - start)+'] - '+str(100*prct)+'%')
+				nextPoint += 0.1
+
 
 		end = time.time()
 		elapsed = (end - start)*1000
-		print('Finalizado em '+str(elapsed)+'ms\n')
+		print('['+secondsToString(elapsed)+'] - Finalizado\n')
 		
-		avgItFitness= sum(itFitnnesList)/len(itFitnnesList)
-		print('Apdtiao media das execucoes: '+str(avgItFitness))
-
 		avgItCount = float(sum(itCountList))/len(itCountList)
-		print('Media de iteracoes das execucao: '+str(avgItCount))
+		avgItFitness = sum(itFitnnesList)/len(itFitnnesList)
 
-		print('Execucoes que pararam por atingir o maximo de iteracoes: '+str(gotToLimitIt) + ' de '+str(n))
+		devItFitness = 0
+		devItCount = 0
+		for i in range(len(itFitnnesList)):
+			devItFitness += (itFitnnesList[i] - avgItFitness)**2
+			devItCount += (itCountList[i] - avgItCount)**2
+		
+		devItFitness = math.sqrt(devItFitness/len(itFitnnesList))
+		devItCount = math.sqrt(devItCount/len(itCountList))
+
+
+		print('\nMedia de iteracoes para cada execucao: '+str(avgItCount))
+		print('Desvio padrao de iteracoes para cada execucao: '+str(devItCount))
+		print('\nMedia de aptidao para cada execucao: '+str(avgItFitness))
+		print('Desvio padrao de aptidao para cada execucao: '+str(devItFitness))
+
+		print('\nExecucoes que pararam por atingir o maximo de iteracoes: '+str(gotToLimitIt) + ' de '+str(n))
 
 		plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
 
 		if plotGraphs:
 			x = range(len(itCountList))
-			plt.plot(x,itCountList)
+			mean = len(x) * [avgItCount]
+			plt.bar(x,itCountList)
+			plt.plot(x,mean,'r-',label="Mean")
 			plt.ylabel('Iterations')
 			plt.xlabel('Execution')
+			plt.legend()
 			plt.show()
 
 		plotGraphs = readOption('\nDeseja ver os pontos maximos encontrados na curva? (s/n)\n','s','n')
@@ -462,7 +529,7 @@ elif algorithm == 3:
 		itSolutionList = []
 		itFitnnesList = []
 		gotToLimitIt = 0
-
+		nextPoint = 0
 		print('\nExecutando...')
 		start = time.time()		
 
@@ -479,26 +546,47 @@ elif algorithm == 3:
 			itSolutionList.append(bestX)
 			itFitnnesList.append(bestFitness)
 
+			prct = float(i)/n
+			if(prct >= nextPoint):
+				pointTime = time.time()						
+				print('['+secondsToString(pointTime - start)+'] - '+str(100*prct)+'%')
+				nextPoint += 0.1
 
 		end = time.time()
-		elapsed = (end - start)*1000
-		print('Finalizado em '+str(elapsed)+'ms\n')
+		elapsed = end - start
+		print('['+secondsToString(elapsed)+'] - Finalizado\n')
 		
-		avgItFitness= sum(itFitnnesList)/len(itFitnnesList)
-		print('Apdtiao media das execucoes: '+str(avgItFitness))
-
 		avgItCount = float(sum(itCountList))/len(itCountList)
-		print('Media de iteracoes das execucao: '+str(avgItCount))
+		avgItFitness = sum(itFitnnesList)/len(itFitnnesList)
 
-		print('Execucoes que pararam por atingir o maximo de iteracoes: '+str(gotToLimitIt)+ ' de '+str(n))
+		devItFitness = 0
+		devItCount = 0
+		for i in range(len(itFitnnesList)):
+			devItFitness += (itFitnnesList[i] - avgItFitness)**2
+			devItCount += (itCountList[i] - avgItCount)**2
+		
+		devItFitness = math.sqrt(devItFitness/len(itFitnnesList))
+		devItCount = math.sqrt(devItCount/len(itCountList))
+
+
+		print('\nMedia de iteracoes para cada execucao: '+str(avgItCount))
+		print('Desvio padrao de iteracoes para cada execucao: '+str(devItCount))
+		print('\nMedia de aptidao para cada execucao: '+str(avgItFitness))
+		print('Desvio padrao de aptidao para cada execucao: '+str(devItFitness))
+
+		print('\nExecucoes que pararam por atingir o maximo de iteracoes: '+str(gotToLimitIt) + ' de '+str(n))
+
 
 		plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
 
 		if plotGraphs:
 			x = range(len(itCountList))
-			plt.plot(x,itCountList)
+			mean = len(x) * [avgItCount]
+			plt.bar(x,itCountList)
+			plt.plot(x,mean,'r-',label="Mean")
 			plt.ylabel('Iterations')
 			plt.xlabel('Execution')
+			plt.legend()
 			plt.show()
 
 		plotGraphs = readOption('\nDeseja ver os pontos maximos encontrados na curva? (s/n)\n','s','n')
@@ -543,7 +631,6 @@ elif algorithm == 3:
 			x = range(len(fitnessList))
 			plt.plot(x,fitnessList, label="Iteration Fitness")
 			plt.plot(x,bestFitnessList, label="Best Fitness")
-			plt.legend()
 			plt.ylabel('Fitness')
 			plt.xlabel('Iteration')
 			plt.legend()

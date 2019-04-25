@@ -1,10 +1,11 @@
 # encoding: utf-8
 
 from BinaryString import BinaryString
-from InputMethods import readIntMin, readIntInterval, readFloatInterval, readIntInterval, readOption, readFloat
+from InputMethods import readIntMin, readIntInterval, readFloatInterval, readIntInterval, readOption, readFloat, secondsToString
 from NatureInspiredAlgorithms import geneticAlgorithm
 import matplotlib.pyplot as plt
 import time
+import math
 from random import random, randint
 from copy import deepcopy
 
@@ -168,35 +169,77 @@ multipleExecutions = readOption('\nDeseja executar diversas vezes com esse param
 if multipleExecutions:
 	n = readIntMin('Numero de execucoes do algoritmo: ', 1)
 	itCountList = []
+	itFitnnesList = []
+	itAvgBestFitnessList = []
 	didtnMakeIt = 0
 	print('\nExecutando...')
+	nextPoint = 0	
 	start = time.time()
-
-	for i in range(n):	
+	for i in range(n):			
 		population = []
-		for i in range(popSize):
+		for j in range(popSize):
 			population.append(BinaryString.newRandom(zero.size))
 
 		[population, bestGene, bestFitness, lastFitnessList, lastBestGeneIndex, generationCount, avgFitnessList, bestFitnessList] = geneticAlgorithm(population, maxIt, rouletteWheelSelection, crossover2by2, mutate, fitnessCalculation, equalsZero, newFitnessIsBetter)
 
 		if bestFitness != 12:
-			didtnMakeIt += 1
-
+			didtnMakeIt += 1				
+		
+		itAvgBestFitnessList.append(sum(bestFitnessList)/len(bestFitnessList))
+		itFitnnesList.append(bestFitness)
 		itCountList.append(generationCount)
 
+		prct = float(i)/n
+		if(prct >= nextPoint):
+			pointTime = time.time()						
+			print('['+secondsToString(pointTime - start)+'] - '+str(100*prct)+'%')
+			nextPoint += 0.1
+
 	end = time.time()
-	elapsed = (end - start)*1000
-	print('Finalizado em '+str(elapsed)+'ms\n')
+	elapsed = end - start
+	print('['+secondsToString(elapsed)+'] - Finalizado\n')
+
 	avgItCount = float(sum(itCountList))/len(itCountList)
-	print('Nao convergiu antes do limite de execucoes '+str(didtnMakeIt)+' vezes')
-	print('Media de iteracoes para cada execucao: '+str(avgItCount))
+	avgItFitness = sum(itFitnnesList)/len(itFitnnesList)
+
+	devItFitness = 0
+	devItCount = 0
+	for i in range(len(itFitnnesList)):
+		devItFitness += (itFitnnesList[i] - avgItFitness)**2
+		devItCount += (itCountList[i] - avgItCount)**2
+	
+	devItFitness = math.sqrt(devItFitness/len(itFitnnesList))
+	devItCount = math.sqrt(devItCount/len(itCountList))
+
+
+	print('\nMedia de iteracoes para cada execucao: '+str(avgItCount))
+	print('Desvio padrao de iteracoes para cada execucao: '+str(devItCount))
+	print('\nMedia de aptidao para cada execucao: '+str(avgItFitness))
+	print('Desvio padrao de aptidao para cada execucao: '+str(devItFitness))
+
+	print('\nExecucoes que pararam por atingir o maximo de iteracoes: '+str(didtnMakeIt) + ' de '+str(n))
+
 	
 	plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
 
 	if plotGraphs:
 		x = range(len(itCountList))
-		plt.plot(x,itCountList, label="Numero de execucoes")
+		mean = len(x) * [avgItCount]
+		plt.bar(x,itCountList)
+		plt.plot(x,mean, 'r-', label="Mean")
 		plt.ylabel('Iterations')
+		plt.xlabel('Execution')
+		plt.legend()
+		plt.show()
+
+	plotGraphs = readOption('\nDeseja ver o grafico do fitness para cada execucao? (s/n)\n','s','n')
+
+	if plotGraphs:
+		x = range(len(itFitnnesList))
+		meanArray = len(x) * [avgItFitness]
+		plt.plot(x,itFitnnesList, label="Best fitness this iteration")
+		plt.plot(x,itAvgBestFitnessList, label="Average fitness this iteration")
+		plt.ylabel('Fitness')
 		plt.xlabel('Execution')
 		plt.legend()
 		plt.show()
