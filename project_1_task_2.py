@@ -2,7 +2,7 @@
 
 from BinaryString import BinaryString
 from InputMethods import readInt, readIntMin, readIntInterval, readFloatInterval, readIntInterval, readOption, readFloat
-from NatureInspiredAlgorithms import geneticAlgorithm, hillClimbing, iterativeHillClimbing, simulatedAnnealing
+from NatureInspiredAlgorithms import geneticAlgorithm, hillClimbing, simulatedAnnealing
 import matplotlib.pyplot as plt
 import time
 import math
@@ -21,33 +21,49 @@ mutationProbability = 0
 
 #DEFINIÇÃO DE FUNÇÕES
 
-#Calculo da aptidão da população
-def fitnessCalculation(population):
-	fitnessList = []
-	bestFitness = 0
-	bestIndex = 0
-	for i in range(len(population)):
-		fitnessList.append(g(population[i].binToInt()))
-		if fitnessList[i] > bestFitness:
-			bestFitness = fitnessList[i]
-			bestIndex = i
-	return [fitnessList, bestIndex]
-
 #g(x)
 def g(x):
 	x = float(x)
 	y = (2**(-2*(((x-0.1)/0.9))**2))*((math.sin(5*math.pi*x))**6)
 	return y
 
-#Função que retorna o indicie da melhor aptidão de uma lista de fitness
-def getBestFitnessIndex(fitnessList):
+#Calculo da aptidão da população
+def populationFitnessCalculation(population):	
+	fitnessList = []
 	bestFitness = 0
 	bestIndex = 0
-	for i in range(len(fitnessList)):		
+	maxValueBS = BinaryString([0] + (population[0].size-1)*[1])
+	multiplier = 1.0/maxValueBS.binToInt()	
+	for i in range(len(population)):
+		value = abs(population[i].binToInt() * multiplier)
+		fitnessList.append(g(value))
 		if fitnessList[i] > bestFitness:
 			bestFitness = fitnessList[i]
 			bestIndex = i
-	return bestIndex
+
+	return [fitnessList, bestIndex]
+
+#Calculo da aptidão e o valor de um individuo
+def getElementValueAndFitness(x):	
+	maxValueBS = BinaryString([0] + (x.size-1)*[1])
+	multiplier = 1.0/maxValueBS.binToInt()	
+	value = abs(x.binToInt() * multiplier)
+	return [value, g(value)]
+
+#Calculo da aptidão de um individuo
+def getElementFitness(x):	
+	return getElementValueAndFitness(x)[1]
+		
+#Retorna o indicie do elemento com melhor aptidão
+def getBestFitnessIndex(fitnessList):
+	best = fitnessList[0]
+	bestI = 0
+	for i in range(len(fitnessList)):
+		if fitnessList[i] > best:
+			bestI = i
+			best = fitnessList[i]
+	
+	return bestI
 
 #Seleção por roleta
 def rouletteWheelSelection(population, fitnessList):
@@ -107,7 +123,7 @@ def mutate(population):
 
 	#Se o elitismo estiver habilitado não aplica a mutação para o melhor indivíduo
 	if withElitism:
-		[fitnessList, bestIndex] = fitnessCalculation(population)
+		[fitnessList, bestIndex] = populationFitnessCalculation(population)
 		#Para cada individuo da população faça
 		for i in range(len(population)):
 			if i != bestIndex:
@@ -121,58 +137,73 @@ def mutate(population):
 
 	return population
 
-#Verificação de objetivo atingido
-def isMaxed(fitnessList, bestIndex):
+#Verificação se o algoritmo genético pode parar a execução
+def geneticAlgorithmShouldStop(fitnessList, bestIndex):
+	return False
+def hillClimbingShouldStop(bestFitness):
+	return False
+def simulatedAnnealingShouldStop(bestFitness):
 	return False
 
-#Perturba x somando um valor aleatório
-def disturbPlusRandom(x):
-	newSize = randint(1, x.size)
-	aux = BinaryString.newRandom(newSize)
-	return BinaryString.binaryAdd(x, aux, False)
-
-#Compara a fitness da string binaria com o esperado
-def binaryIsMaxed(fitness):
-	return False
-
-#Avalia aptidão de x
-def availX(x):
-	return g(x.binToInt())
-
-#Verifica se deve trocar pela nova aptidao
-def shouldGetNewX(best, newFitness):
-	if newFitness > best:
+#Retorna a melhor aptidão de uma comparação
+def newFitnessIsBetter(fitness, newFitness):
+	if newFitness > fitness:
 		return True
 	return False
 
-#Mudanca de temperatura
-def decreaseTemperature(t, it):
-	return t * 0.8
+#Mostra o ponto na curva
+def plotPointOnCurve(point):
+	x = []
+	y = []
+	for i in range(100):
+		x.append(i * 0.01)
+		y.append(g(x[i]))
+	[px, py] = getElementValueAndFitness(point)
+	plt.plot(x,y)
+	plt.plot(px,py,'ro')
+	plt.ylabel('g(x)')
+	plt.xlabel('x')
+	plt.show()
 
+#Função que perturba x somando ou subtraindo em 1
+def disturbPlusOne(x):
+	xValue = x.binToInt()
+
+	plusOne = BinaryString.newFromInt(xValue + 1)
+	minusOne = BinaryString.newFromInt(xValue - 1)
+	fitnessPlusOne = getElementFitness(plusOne)
+	fitnessMinusOne = getElementFitness(minusOne)
+		
+	if fitnessMinusOne > fitnessPlusOne:
+		return BinaryString.changeSize(minusOne, x.size)
+	return BinaryString.changeSize(plusOne, x.size)
+
+#Função que perturba x somando um valor aleatorio
+def disturbMutating(x):
+	newBinStr = BinaryString(x.bin)
+	newBinStr.mutate(0.1)
+	return newBinStr
+	
+
+
+#Funcao que decrementa a temperatura
+def lowerTemperature(t, it):
+	return t*0.8
 #-------------------------------------------------------
 
 #INICIO DA EXECUÇÃO
 print("\nMinimizar funcao com algoritmo genetico")
 print("------------------------------------------------")
-print("Maximizar a funcao g(x) = (2^(-2((𝑥-0.1)/0.9))^2)(sin(5𝜋𝑥))^6")
+print("Maximizar a funcao g(x) = (2^(-2((x-0.1)/0.9))^2)(sin(5pix))^6")
 
 
-algorithm = readIntInterval("\nDeseja utilizar que algoritmo?\n1 - Genetico\n2 - Subida de Colina\n3 - Subida de Colina Iterativa\n4 - Recozimento Simulado\n", 1, 4)
+algorithm = readIntInterval("\nDeseja utilizar que algoritmo?\n1 - Genetico\n2 - Subida de Colina\n3 - Recozimento Simulado\n", 1, 3)
 if algorithm == 1:
 	print("\n------------------------------------------------")
 	print('Algoritmo genetico:\n')
 
-	intervalStart = readInt('Inicio do intervalo a encontrar o maximo: ')
-	intervalEnd = readInt('Fim do intervalo a encontrar o maximo: ')
-
-	minVal = BinaryString.newFromInt(intervalStart)
-	maxVal = BinaryString.newFromInt(intervalEnd)
-
-	if(maxVal.size > minVal.size):
-		stringSize = maxVal.size
-	else:
-		stringSize = minVal.size
-
+	stringSize = readIntMin('Tamanho da bitstring que representa x: ', 2)
+	
 	popSize = 1
 	while popSize % 2 == 1:
 		popSize = readIntMin('Tamanho da populacao: ', 1)
@@ -202,81 +233,116 @@ if algorithm == 1:
 		mutationProbability = 0
 			
 	maxIt = readIntMin('\nNumero maximo de iteracoes do algoritmo: ', 1)
+	
+	maxItNoImprove = readIntMin('\nNumero maximo de iteracoes do algoritmo sem evoluir a aptidao: ', 1)
 
 	multipleExecutions = readOption('\nDeseja executar diversas vezes com esse parametros para obter estatisticas? (s/n)\n','s','n')
 	
 	if multipleExecutions:
 		n = readIntMin('Numero de execucoes do algoritmo: ', 1)
 		itCountList = []
-		didtnMakeIt = 0
+		itFitnnesList = []
+		bestGeneAmongIts = BinaryString([0,0])
+		bestFitnessAmongIts = 0
 		print('\nExecutando...')
 		start = time.time()
 		for i in range(n):	
-			population = []
-			for i in range(popSize):
-				population.append(BinaryString.newRandom(stringSize))
+		 	population = []
+		 	for i in range(popSize):
+		 		population.append(BinaryString.newRandom(stringSize))
 
-			[population, fitnessList, bestGeneIndex, generationCount, avgFitness, bestFitness] = geneticAlgorithm(population, maxIt, rouletteWheelSelection, crossover2by2, mutate, fitnessCalculation, isMaxed)
-			if fitnessList[bestGeneIndex] != 12:
-				didtnMakeIt += 1
-			itCountList.append(generationCount)
+			[population, bestGene, bestFitness, lastFitnessList, lastBestGeneIndex, generationCount, avgFitnessList, bestFitnessList] = geneticAlgorithm(population, maxIt,rouletteWheelSelection, crossover2by2, mutate, populationFitnessCalculation, geneticAlgorithmShouldStop, newFitnessIsBetter, maxItNoImprove)
+
+		 	itCountList.append(generationCount)
+			itFitnnesList.append(bestFitness)
+
+			if newFitnessIsBetter(bestFitnessAmongIts, bestFitness):
+				bestFitnessAmongIts = bestFitness
+				bestGeneAmongIts = bestGene
+
 		end = time.time()
 		elapsed = (end - start)*1000
-		print('Finalizado em '+str(elapsed)+'ms\n')
+		print('Finalizado em '+str(elapsed)+'ms\n')					
+
+		bestGeneValue = getElementValueAndFitness(bestGeneAmongIts)[0]
+		print('Valor maximo atingido: g('+str(bestGeneValue)+')='+ str(bestFitnessAmongIts))
+		
 		avgItCount = float(sum(itCountList))/len(itCountList)
-		print('Nao convergiu antes do limite de execucoes '+str(didtnMakeIt)+' vezes')
 		print('Media de iteracoes para cada execucao: '+str(avgItCount))
+
+		avgItFitness = sum(itFitnnesList)/len(itFitnnesList)
+		print('Media de aptidao para cada execucao: '+str(avgItFitness))
 		
 		plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
 
 		if plotGraphs:
 			x = range(len(itCountList))
 			plt.plot(x,itCountList, label="Numero de execucoes")
+			plt.ylabel('Iterations')
+			plt.xlabel('Execution')
 			plt.legend()
 			plt.show()
+
+		plotGraphs = readOption('\nDeseja ver o grafico do fitness para cada execucao? (s/n)\n','s','n')
+
+		if plotGraphs:
+			x = range(len(itFitnnesList))
+			plt.plot(x,itFitnnesList, label="Melhor aptidao da execucao")
+			plt.ylabel('Best Fitness')
+			plt.xlabel('Execution')
+			plt.legend()
+			plt.show()
+		
+		plotGraphs = readOption('\nDeseja ver o melhor ponto encontrado no grafico da funcao? (s/n)\n','s','n')
+
+		if plotGraphs:
+			plotPointOnCurve(bestGeneAmongIts)
 	else:
 		population = []
 		for i in range(popSize):
 			population.append(BinaryString.newRandom(stringSize))
-
+		
 		print('\nExecutando...')
 		start = time.time()
-		[population, fitnessList, bestGeneIndex, generationCount, avgFitness, bestFitness] = geneticAlgorithm(population, maxIt, rouletteWheelSelection, crossover2by2, mutate, fitnessCalculation, isMaxed)
+
+		[population, bestGene, bestFitness, lastFitnessList, lastBestGeneIndex, generationCount, avgFitnessList, bestFitnessList] = geneticAlgorithm(population, maxIt,rouletteWheelSelection, crossover2by2, mutate, populationFitnessCalculation, geneticAlgorithmShouldStop, newFitnessIsBetter, maxItNoImprove)
+
 		end = time.time()
 		elapsed = (end - start)*1000
+
+		bestGeneValue = getElementValueAndFitness(bestGene)[0]
 		print('Finalizado em '+str(elapsed)+'ms\n')
 		print('Geracoes executadas: '+str(generationCount))
+		print('Valor maximo atingido: g('+str(bestGeneValue)+')='+ str(bestFitness))
 
 		printResults = readOption('\nDeseja ver a ultima geracao do algoritmo? (s/n)\n','s','n')
 
 		if printResults:
 			print('\nPopulacao final: ')
 			for i in range(len(population)):
-				print('['+population[i].toString() + '] - Fitness: '+ str(fitnessList[i]))
-			print('Melhor gene:\n[' + population[bestGeneIndex].toString() +'] = '+ str(population[bestGeneIndex].binToInt())+' - Fitness:'+ str(fitnessList[bestGeneIndex]))
+				print('['+population[i].toString() + '] - Fitness: '+ str(lastFitnessList[i]))
+			print('Melhor gene:\n[' + population[lastBestGeneIndex].toString() +'] = '+ str(getElementValueAndFitness(population[lastBestGeneIndex])[0])+' - Fitness:'+ str(lastFitnessList[lastBestGeneIndex]))
 
 		plotGraphs = readOption('\nDeseja ver o grafico com a media de desempenho e o melhor desempenho de cada geracao? (s/n)\n','s','n')
 
 		if plotGraphs:
-			x = range(len(avgFitness))
-			plt.plot(x,avgFitness, label="Average fitness")
-			plt.plot(x,bestFitness, label="Best fitness")
+			x = range(len(avgFitnessList))
+			plt.plot(x,avgFitnessList, label="Average fitness")
+			plt.plot(x,bestFitnessList, label="Best fitness")
+			plt.ylabel('Fitness')
+			plt.xlabel('Generation')
 			plt.legend()
 			plt.show()
+
+		plotGraphs = readOption('\nDeseja ver o melhor ponto encontrado no graficoda funcao? (s/n)\n','s','n')
+
+		if plotGraphs:
+			plotPointOnCurve(bestGene)
 elif algorithm == 2:
 	print("\n------------------------------------------------")
 	print('Subida de colina:\n')
 	
-	intervalStart = readInt('Inicio do intervalo a encontrar o maximo: ')
-	intervalEnd = readInt('Fim do intervalo a encontrar o maximo: ')
-
-	minVal = BinaryString.newFromInt(intervalStart)
-	maxVal = BinaryString.newFromInt(intervalEnd)
-
-	if(maxVal.size > minVal.size):
-		stringSize = maxVal.size
-	else:
-		stringSize = minVal.size
+	stringSize = readIntMin('Tamanho da bitstring que representa x: ', 2)
 
 	maxIt = readIntMin('\nNumero maximo de iteracoes do algoritmo: ',1)
 	maxNoImprove = readIntMin('Numero maximo de iteracoes sem melhora do algoritmo: ',1)
@@ -286,31 +352,63 @@ elif algorithm == 2:
 	if multipleExecutions:
 		n = readIntMin('Numero de execucoes do algoritmo: ', 1)
 		itCountList = []
-		didtnMakeIt = 0
+		itSolutionList = []
+		itFitnnesList = []
+		gotToLimitIt = 0
 		print('\nExecutando...')
 		start = time.time()			
 		for i in range(n):
 			x = BinaryString.newRandom(stringSize)			
 			
-			[x, bestFitness, achieved, fitness, generationCount] = hillClimbing(x, maxIt, maxNoImprove, disturbPlusRandom, availX, shouldGetNewX, binaryIsMaxed)
+			[bestX, bestFitness, achieved, bestFitnessList, fitnessList, generationCount] = hillClimbing(x, maxIt, maxNoImprove, disturbPlusOne, getElementFitness, newFitnessIsBetter, hillClimbingShouldStop)
+
+			if generationCount >= maxIt:
+				gotToLimitIt += 1
 
 			itCountList.append(generationCount)
+			itSolutionList.append(bestX)
+			itFitnnesList.append(bestFitness)
 
-			if not achieved:
-				didtnMakeIt += 1
 
 		end = time.time()
 		elapsed = (end - start)*1000
 		print('Finalizado em '+str(elapsed)+'ms\n')
-		avgItCount = float(sum(itCountList))/len(itCountList)
 		
-		print('Nao convergiu antes do limite de execucoes '+str(didtnMakeIt)+' vezes')
-		print('Media de iteracoes para cada execucao: '+str(avgItCount))
+		avgItFitness= sum(itFitnnesList)/len(itFitnnesList)
+		print('Apdtiao media das execucoes: '+str(avgItFitness))
+
+		avgItCount = float(sum(itCountList))/len(itCountList)
+		print('Media de iteracoes das execucao: '+str(avgItCount))
+
+		print('Execucoes que pararam por atingir o maximo de iteracoes: '+str(gotToLimitIt) + ' de '+str(n))
+
 		plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
 
 		if plotGraphs:
 			x = range(len(itCountList))
-			plt.plot(x,itCountList, label="Numero de execucoes")
+			plt.plot(x,itCountList)
+			plt.ylabel('Iterations')
+			plt.xlabel('Execution')
+			plt.show()
+
+		plotGraphs = readOption('\nDeseja ver os pontos maximos encontrados na curva? (s/n)\n','s','n')
+
+		if plotGraphs:
+			px = []
+			py = []
+			for i in range(len(itSolutionList)):
+				[val, gx] = getElementValueAndFitness(itSolutionList[i])
+				px.append(val) 
+				py.append(gx)
+			x = []
+			y = []
+			for i in range(100):
+				x.append(i * 0.01)
+				y.append(g(x[i])) 
+			plt.plot(x,y)
+			plt.plot(px,py,'ro',label="Max points found")
+			plt.ylabel('g(x)')
+			plt.xlabel('x')
 			plt.legend()
 			plt.show()
 
@@ -320,126 +418,39 @@ elif algorithm == 2:
 		print('\nExecutando...')
 		start = time.time()
 		
-		[x, bestFitness, achieved, fitness, generationCount] = hillClimbing(x, maxIt, maxNoImprove, disturbPlusRandom, availX, shouldGetNewX, binaryIsMaxed)
+		[bestX, bestFitness, achieved, bestFitnessList, fitnessList, generationCount] = hillClimbing(x, maxIt, maxNoImprove, disturbPlusOne, getElementFitness, newFitnessIsBetter, hillClimbingShouldStop)
 
 		end = time.time()
 		elapsed = (end - start)*1000
 		print('Finalizado em '+str(elapsed)+'ms\n')
 
-		if achieved:
-			print('Objetivo atingido!')
-		else:
-			print('Objetivo nao foi atingido!')
-
 		print('Geracoes executadas: '+str(generationCount))
+		bestGeneValue = getElementValueAndFitness(bestX)[0]
+		print('Valor maximo atingido: g('+str(bestGeneValue)+')='+ str(bestFitness))
 
-		printResults = readOption('\nDeseja ver o resultado encontrado? (s/n)\n','s','n')
-
-		if printResults:
-			print('Resultado encontrado:\n[' + x.toString() +'] = '+ str(x.binToInt())+'  - Fitness:'+ str(bestFitness))
-
-		plotGraphs = readOption('\nDeseja ver o grafico com o desempenho cada iteracao? (s/n)\n','s','n')
+		plotGraphs = readOption('\nDeseja ver o grafico com o desempenho a cada iteracao? (s/n)\n','s','n')
 
 		if plotGraphs:
-			x = range(len(fitness))
-			plt.plot(x,fitness, label="Desempenho")
+			x = range(len(fitnessList))
+			plt.plot(x,fitnessList, label="Disturbed Fitness")
+			plt.plot(x,bestFitnessList, label="Best Fitness")
+			plt.legend()
+			plt.ylabel('Fitness')
+			plt.xlabel('Iteration')
 			plt.legend()
 			plt.show()
+		
+		plotGraphs = readOption('\nDeseja ver o melhor ponto encontrado no grafico da funcao? (s/n)\n','s','n')
+
+		if plotGraphs:
+			plotPointOnCurve(bestX)
 elif algorithm == 3:
-	print("\n------------------------------------------------")
-	print('Subida de colina iterativa:\n')
-	intervalStart = readInt('Inicio do intervalo a encontrar o maximo: ')
-	intervalEnd = readInt('Fim do intervalo a encontrar o maximo: ')
-
-	minVal = BinaryString.newFromInt(intervalStart)
-	maxVal = BinaryString.newFromInt(intervalEnd)
-
-	if(maxVal.size > minVal.size):
-		stringSize = maxVal.size
-	else:
-		stringSize = minVal.size
-	maxHillClimbIt = readIntMin('\nNumero maximo de execucoes do algoritmo de subida de colina: ',1)
-	maxIt = readIntMin('\nNumero maximo de iteracoes do algoritmo de subida de colina: ',1)
-	maxNoImprove = readIntMin('Numero maximo de iteracoes sem melhora do algoritmo de subida de colina: ',1)
-	
-	multipleExecutions = readOption('\nDeseja executar diversas vezes com esse parametros para obter estatisticas? (s/n)\n','s','n')
-
-	if multipleExecutions:
-		n = readIntMin('Numero de execucoes do algoritmo: ', 1)
-		itCountList = []
-		didtnMakeIt = 0
-		print('\nExecutando...')
-		start = time.time()
-		for i in range(n):
-			x = BinaryString.newRandom(stringSize)
-			[x, bestFitness, achieved, fitness, generationCount] = iterativeHillClimbing(x, maxHillClimbIt, maxIt, maxNoImprove, disturbPlusRandom, availX, shouldGetNewX, binaryIsMaxed)
-
-			itCountList.append(generationCount)
-			if not achieved:
-				didtnMakeIt += 1
-
-		end = time.time()
-		elapsed = (end - start)*1000
-		print('Finalizado em '+str(elapsed)+'ms\n')
-		avgItCount = float(sum(itCountList))/len(itCountList)
-		
-		print('Nao convergiu antes do limite de execucoes '+str(didtnMakeIt)+' vezes')
-		print('Media de iteracoes para cada execucao: '+str(avgItCount))
-		plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
-
-		if plotGraphs:
-			x = range(len(itCountList))
-			plt.plot(x,itCountList, label="Numero de execucoes")
-			plt.legend()
-			plt.show()
-			
-	else:
-		x = BinaryString.newRandom(stringSize)
-
-		print('\nExecutando...')
-		start = time.time()
-		[x, bestFitness, achieved, fitness, generationCount] = iterativeHillClimbing(x, maxHillClimbIt, maxIt, maxNoImprove, disturbPlusRandom, availX, shouldGetNewX, binaryIsMaxed)
-
-		end = time.time()
-		elapsed = (end - start)*1000
-		print('Finalizado em '+str(elapsed)+'ms\n')
-
-		if achieved:
-			print('Objetivo atingido!')
-		else:
-			print('Objetivo nao foi atingido!')
-
-		print('Geracoes executadas: '+str(generationCount))
-
-		printResults = readOption('\nDeseja ver o resultado encontrado? (s/n)\n','s','n')
-
-		if printResults:
-			print('Resultado encontrado:\n[' + x.toString() +'] = '+ str(x.binToInt())+'  - Fitness:'+ str(bestFitness))
-		
-		plotGraphs = readOption('\nDeseja ver o grafico com o desempenho a cada iteracao ? (s/n)\n','s','n')
-
-		if plotGraphs:
-			x = range(len(fitness))
-			plt.plot(x,fitness, label="Desempenho")
-			plt.legend()
-			plt.show()			
-elif algorithm == 4:
 	print("\n------------------------------------------------")
 	print('Recozimento simulado:\n')
 
-	intervalStart = readInt('Inicio do intervalo a encontrar o maximo: ')
-	intervalEnd = readInt('Fim do intervalo a encontrar o maximo: ')
+	stringSize = readIntMin('Tamanho da bitstring que representa x: ', 2)
 
-	minVal = BinaryString.newFromInt(intervalStart)
-	maxVal = BinaryString.newFromInt(intervalEnd)
-
-	if(maxVal.size > minVal.size):
-		stringSize = maxVal.size
-	else:
-		stringSize = minVal.size
-
-
-	maxIt = readIntMin('Numero maximo de iteracoes do algoritmo: ',1)
+	maxIt = readIntMin('\nNumero maximo de iteracoes do algoritmo: ',1)
 	maxNoImprove = readIntMin('Numero maximo de iteracoes sem melhora do algoritmo: ',1)
 	initialTemperature = readFloat('Temperatura inicial do sistema: ')
 
@@ -448,55 +459,99 @@ elif algorithm == 4:
 	if multipleExecutions:
 		n = readIntMin('Numero de execucoes do algoritmo: ', 1)
 		itCountList = []
-		didtnMakeIt = 0
+		itSolutionList = []
+		itFitnnesList = []
+		gotToLimitIt = 0
+
 		print('\nExecutando...')
-		start = time.time()
+		start = time.time()		
+
 		for i in range(n):
 			x = BinaryString.newRandom(stringSize)
-			[x, bestFitness, achieved, fitness, generationCount] = simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturbPlusRandom, availX, shouldGetNewX, decreaseTemperature, binaryIsMaxed)
+
+			[bestX, bestFitness, achieved, bestFitnessList, fitnessList, generationCount] = simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturbMutating, 
+			getElementFitness, newFitnessIsBetter, lowerTemperature, simulatedAnnealingShouldStop)
+
+			if generationCount >= maxIt:
+				gotToLimitIt += 1
+
 			itCountList.append(generationCount)
-			if not achieved:
-				didtnMakeIt += 1
+			itSolutionList.append(bestX)
+			itFitnnesList.append(bestFitness)
+
 
 		end = time.time()
 		elapsed = (end - start)*1000
 		print('Finalizado em '+str(elapsed)+'ms\n')
-		avgItCount = float(sum(itCountList))/len(itCountList)
 		
-		print('Nao convergiu antes do limite de execucoes '+str(didtnMakeIt)+' vezes')
-		print('Media de iteracoes para cada execucao: '+str(avgItCount))
+		avgItFitness= sum(itFitnnesList)/len(itFitnnesList)
+		print('Apdtiao media das execucoes: '+str(avgItFitness))
+
+		avgItCount = float(sum(itCountList))/len(itCountList)
+		print('Media de iteracoes das execucao: '+str(avgItCount))
+
+		print('Execucoes que pararam por atingir o maximo de iteracoes: '+str(gotToLimitIt)+ ' de '+str(n))
+
 		plotGraphs = readOption('\nDeseja ver o grafico da quantidade de iteracoes para cada execucao? (s/n)\n','s','n')
 
 		if plotGraphs:
 			x = range(len(itCountList))
-			plt.plot(x,itCountList, label="Numero de execucoes")
+			plt.plot(x,itCountList)
+			plt.ylabel('Iterations')
+			plt.xlabel('Execution')
+			plt.show()
+
+		plotGraphs = readOption('\nDeseja ver os pontos maximos encontrados na curva? (s/n)\n','s','n')
+
+		if plotGraphs:
+			px = []
+			py = []
+			for i in range(len(itSolutionList)):
+				[val, gx] = getElementValueAndFitness(itSolutionList[i])
+				px.append(val) 
+				py.append(gx)
+			x = []
+			y = []
+			for i in range(100):
+				x.append(i * 0.01)
+				y.append(g(x[i])) 
+			plt.plot(x,y)
+			plt.plot(px,py,'ro',label="Max points found")
+			plt.ylabel('g(x)')
+			plt.xlabel('x')
 			plt.legend()
 			plt.show()
+
 	else:	
 		x = BinaryString.newRandom(stringSize)
 		print('\nExecutando...')
-		[x, bestFitness, achieved, fitness, generationCount] = simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturbPlusRandom, availX, shouldGetNewX, decreaseTemperature, binaryIsMaxed)
+		start = time.time()
 
-		print('Finalizado!\n')
+		[bestX, bestFitness, achieved, bestFitnessList, fitnessList, generationCount] = simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturbMutating, getElementFitness, newFitnessIsBetter, lowerTemperature, simulatedAnnealingShouldStop)
 
-		if achieved:
-			print('Objetivo atingido!')
-		else:
-			print('Objetivo nao foi atingido!')
+		end = time.time()
+		elapsed = (end - start)*1000
+		print('Finalizado em '+str(elapsed)+'ms\n')
 
 		print('Geracoes executadas: '+str(generationCount))
+		bestGeneValue = getElementValueAndFitness(bestX)[0]
+		print('Valor maximo atingido: g('+str(bestGeneValue)+')='+ str(bestFitness))
 
-		printResults = readOption('\nDeseja ver o resultado encontrado? (s/n)\n','s','n')
-
-		if printResults:
-			print('Resultado encontrado:\n[' + x.toString() +'] = '+ str(x.binToInt())+' - Fitness:'+ str(bestFitness))
-
-		plotGraphs = readOption('\nDeseja ver o grafico com o desempenho cada iteracao? (s/n)\n','s','n')
+		plotGraphs = readOption('\nDeseja ver o grafico com o desempenho a cada iteracao? (s/n)\n','s','n')
 
 		if plotGraphs:
-			x = range(len(fitness))
-			plt.plot(x,fitness, label="Desempenho")
+			x = range(len(fitnessList))
+			plt.plot(x,fitnessList, label="Iteration Fitness")
+			plt.plot(x,bestFitnessList, label="Best Fitness")
+			plt.legend()
+			plt.ylabel('Fitness')
+			plt.xlabel('Iteration')
 			plt.legend()
 			plt.show()
+		
+		plotGraphs = readOption('\nDeseja ver o melhor ponto encontrado no grafico da funcao? (s/n)\n','s','n')
+
+		if plotGraphs:
+			plotPointOnCurve(bestX)
 
 print('\nFinalizando script...')

@@ -3,23 +3,40 @@ from BinaryString import BinaryString
 from random import random, randint
 from math import exp
 
-def geneticAlgorithm(population, maxIt, select, breed, vary, avail, achievedTarget):
+def geneticAlgorithm(population, maxIt, select, breed, vary, avail, achievedTarget, newFitnessIsBetter, maxItNoImprove = -1):
 	it = 0
-	avgFitness = []
-	bestFitness = []
-
+	avgFitnessList = []
+	bestFitnessList = []
+	noImproveIt = 0 
+	bestFitness = 0
+	bestGene = population[0]
 	#Enquanto não atingir o máximo de iterações
 	while it <= maxIt:
 		#Avalia a população
 		[fitnessList, bestGeneIndex]= avail(population)
 
 		#Registra o fitness médio e o melhor da população
-		bestFitness.append(fitnessList[bestGeneIndex])
+		bestFitnessList.append(fitnessList[bestGeneIndex])
 		itAvgFitness = sum(fitnessList)/len(fitnessList)
-		avgFitness.append(itAvgFitness)
+		avgFitnessList.append(itAvgFitness)
+
+		#Se for a primeira iteracao salva o melhor valor
+		if it == 0:
+			bestFitness = fitnessList[bestGeneIndex]
+		#Senão verifica se o melhor valor mudou
+		else:
+			if(newFitnessIsBetter(bestFitness, fitnessList[bestGeneIndex])):
+				bestFitness = fitnessList[bestGeneIndex]
+				bestGene = population[bestGeneIndex]
+				noImproveIt = 0
+			else:
+				noImproveIt += 1
 
 		#Se atingiu o objetivo para as iterações
-		if(achievedTarget(fitnessList, bestGeneIndex)):
+		if achievedTarget(fitnessList, bestGeneIndex):
+			break
+
+		if maxItNoImprove>=0 and noImproveIt >= maxItNoImprove:
 			break
 
 		#Seleciona a população da próxima geração
@@ -33,15 +50,18 @@ def geneticAlgorithm(population, maxIt, select, breed, vary, avail, achievedTarg
 
 		#Incrementa a iteração
 		it += 1
-	
-	return [population, fitnessList, bestGeneIndex, it, avgFitness, bestFitness]
+
+	lastFitnessList = fitnessList
+	lastBestGeneIndex = bestGeneIndex
+	return [population, bestGene, bestFitness, lastFitnessList, lastBestGeneIndex, it, avgFitnessList, bestFitnessList]
 
 def hillClimbing(x, maxIt, maxNoImprove, disturb, avail, shouldGetTheDisturbed, achievedTarget):
 	it = 0
 	noImprove = 0
 	#Avalia x
 	bestFitness = avail(x)
-	fitness = [bestFitness]
+	bestFitnessList = [bestFitness]
+	fitnessList = [bestFitness]
 	achieved = False	
 	#Enquanto não atingir o máximo de iterações
 	while it < maxIt:
@@ -49,10 +69,10 @@ def hillClimbing(x, maxIt, maxNoImprove, disturb, avail, shouldGetTheDisturbed, 
 		if achievedTarget(bestFitness):
 			achieved = True
 			break
-
+		
 		#Perturba x
 		aux = disturb(x)
-		auxFitness = avail(x)
+		auxFitness = avail(aux)
 
 		#Verifica se deve substituir x por x'
 		if(shouldGetTheDisturbed(bestFitness,auxFitness)):
@@ -62,47 +82,15 @@ def hillClimbing(x, maxIt, maxNoImprove, disturb, avail, shouldGetTheDisturbed, 
 		else:
 			noImprove += 1
 
-		fitness.append(bestFitness)
-
+		fitnessList.append(auxFitness)
+		bestFitnessList.append(bestFitness)
 		#Se atingiu o máximo de iterações sem melhorar para as iterações			
 		if noImprove >= maxNoImprove:
 			break
 		
 		it += 1
 
-	return [x, bestFitness, achieved, fitness, it]
-
-def iterativeHillClimbing(initialX, maxHillClimbingIterations, maxIt, maxNoImprove, disturb, avail, shouldGetTheDisturbed, achievedTarget):
-	it = 0
-	x = initialX
-	bestX = x
-	bestFitness = avail(x)
-	fitness = [bestFitness]
-	achieved = False
-	#Enquanto não atingir o máximo de iterações do Hill Climbing	
-	while it < maxHillClimbingIterations:
-		#Se atingiu o objetivo para as iteracoes
-		if achievedTarget(bestFitness):
-			achieved = True
-			break
-
-		it += 1
-
-		#Gera um x aleatório
-		x = BinaryString.newRandom(initialX.size)
-		
-		#Executa o hill climbing pro x gerado
-		[x, iterationFitness, itHcAchieved, fitnessList, itHcIterations] = hillClimbing(x, maxIt, maxNoImprove, disturb, avail, shouldGetTheDisturbed, achievedTarget)
-		
-
-		#Se x'for melhor que x substitui os valores
-		if(shouldGetTheDisturbed(bestFitness,iterationFitness)):
-			bestX = x
-			bestFitness = iterationFitness
-
-		fitness.append(bestFitness)
-
-	return [bestX, bestFitness, achieved, fitness, it]
+	return [x, bestFitness, achieved, bestFitnessList, fitnessList, it]
 
 def simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturb, avail, shouldGetTheDisturbed, temperatureChange, achievedTarget):
 	temperature = initialTemperature
@@ -110,7 +98,10 @@ def simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturb, avai
 	noImprove = 0
 	#Avalia x
 	bestFitness = avail(x)
-	fitness = [bestFitness]
+	xFitness = bestFitness
+	bestX = x
+	fitnessList = [bestFitness]
+	bestFitnessList = [bestFitness]
 	achieved = False	
 	#Enquanto não atingir o máximo de iterações
 	while it < maxIt:
@@ -121,23 +112,28 @@ def simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturb, avai
 
 		#Perturba x
 		aux = disturb(x)
-		auxFitness = avail(x)
+		auxFitness = avail(aux)
+
 
 		#Verifica se deve substituir x por x'
 		if(shouldGetTheDisturbed(bestFitness,auxFitness)):
 			x = aux
+			bestX = aux
 			bestFitness = auxFitness
+			xFitness = auxFitness
 			noImprove = 0
 		else:
-			probability = exp((float(-abs(bestFitness-auxFitness))/temperature))
-			if random() <= probability:
+			changeProbability = exp((float(-abs(bestFitness-auxFitness))/temperature))
+			test = random()
+			if test <= changeProbability:
 				x = aux
-				bestFitness = auxFitness
+				xFitness = auxFitness
 			else:
 				noImprove += 1
 
+		fitnessList.append(xFitness)
+		bestFitnessList.append(bestFitness)
 
-		fitness.append(bestFitness)
 
 		#Se atingiu o máximo de iterações sem melhorar para as iterações			
 		if noImprove >= maxNoImprove:
@@ -146,4 +142,4 @@ def simulatedAnnealing(x, maxIt, maxNoImprove, initialTemperature, disturb, avai
 		it += 1
 		temperature = temperatureChange(temperature,it)					
 
-	return [x, bestFitness, achieved, fitness, it]
+	return [bestX, bestFitness, achieved, bestFitnessList, fitnessList, it]
