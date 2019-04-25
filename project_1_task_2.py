@@ -192,7 +192,7 @@ def lowerTemperature(t, it):
 #-------------------------------------------------------
 
 #INICIO DA EXECUÇÃO
-print("\nMinimizar funcao com algoritmo genetico")
+print("\Maximizar funcao com algoritmos inspirados na natureza")
 print("------------------------------------------------")
 print("Maximizar a funcao g(x) = (2^(-2((x-0.1)/0.9))^2)(sin(5pix))^6")
 
