@@ -27,62 +27,6 @@ class BinaryString:
 		return BinaryString(aux)
 
 	@staticmethod
-	def binaryAdd(binStr1, binStr2, allowCarry):
-		if not isinstance(binStr1, BinaryString) or not isinstance(binStr2, BinaryString):
-			raise Exception('BinaryString.binaryAdd parameters must be both of type BinaryString')
-
-		sizeDiff = abs(binStr1.size - binStr2.size)
-		if sizeDiff > 0:
-			if binStr1.size > binStr2.size:
-				bin1 = binStr1.bin
-				bin2 = (sizeDiff * [0]) + binStr2.bin
-			else:				
-				bin1 = (sizeDiff * [0]) + binStr1.bin
-				bin2 = binStr2.bin
-		else:
-			bin1 = binStr1.bin
-			bin2 = binStr2.bin
-
-		carry = 0
-		result = len(bin1) * [0]			
-		for i in range(len(bin1)-1,-1,-1):
-			if bin1[i] == 1:
-				if bin2[i] == 1:
-					if carry == 1:
-						result[i] = 1
-						carry = 1
-					else:
-						result[i] = 0
-						carry = 1
-				else:
-					if carry == 1:
-						result[i] = 0
-						carry = 1
-					else:
-						result[i] = 1
-						carry = 0
-			else:
-				if bin2[i] == 1:
-					if carry == 1:
-						result[i] = 0
-						carry = 1
-					else:
-						result[i] = 1
-						carry = 0
-				else:
-					if carry == 1:
-						result[i] = 1
-						carry = 0
-					else:	
-						result[i] = 0
-						carry = 0
-		
-		if carry == 1 and allowCarry:
-			result = [1] + result
-
-		return BinaryString(result)
-
-	@staticmethod
 	def hammingDistance(binStr1, binStr2):
 		if binStr1.size != binStr2.size:
 			 raise Exception('The Hamming distance can only be calculated for Binary Strings of the same size')
@@ -101,6 +45,22 @@ class BinaryString:
 		newBinStr1 = binStr1.bin[0:point] + binStr2.bin[point:binStr2.size]
 		newBinStr2 = binStr2.bin[0:point] + binStr1.bin[point:binStr1.size]
 		return [BinaryString(newBinStr1), BinaryString(newBinStr2)]
+
+	@staticmethod
+	def changeSize(binStr,size):
+		if size < 2:
+			raise Exception('A binary string must be at least size 2')
+
+		sizeDiff = binStr.size - size		
+		if sizeDiff > 0:
+			newBin = [binStr.bin[0]] + binStr.bin[sizeDiff+1:]
+		elif sizeDiff < 0:
+			sizeDiff = abs(sizeDiff)
+			newBin = [binStr.bin[0]] + (sizeDiff*[0]) + binStr.bin[1:]
+		else:
+			newBin = binStr.bin
+		return BinaryString(newBin)
+
 
 	def mutate(self, p):
 		if p > 1 or p < 0:
@@ -134,7 +94,7 @@ class BinaryString:
 					raise Exception('Binary String list values must be of type int')
 				if i < 0 or i > 1:
 					raise Exception('Binary String list values must be only 0 or 1')
-			self.bin = list(binStr)
+			self.bin = list(binStr)			
 			self.size = len(self.bin)
 		else:
 			raise Exception('Binary String value must be of type list')
